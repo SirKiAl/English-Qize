@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <title>English Quiz</title>
+  <style>
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: linear-gradient(135deg, #e3f2fd, #f8f9fa);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      color: #333;
+      font-size: 56px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5em;
+      color: #222;
+    }
+
+    .card {
+      background: white;
+      border-radius: 0.7em;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+      padding: 60px 30px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .card.hidden {
+      display: none;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      padding: 1em;
+      margin-top: 0.7em;
+      border: none;
+      border-radius: 0.6em;
+      font-size: 1em;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #000;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .btn-blue {
+      background: #007bff;
+    }
+
+    .btn-green {
+      background: #28a745;
+    }
+
+    .btn-pink {
+      background: #d63384;
+    }
+
+    .btn-gray {
+      background: #6c757d;
+    }
+
+    .btn-orange {
+      background: #ff9800;
+    }
+
+    .btn-red {
+      background: #dc3545;
+    }
+
+    .question {
+      font-size: 1em;
+      font-weight: 600;
+      margin-bottom: 0.3em;
+    }
+
+    .progress {
+      color: #777;
+      font-size: 0.7em;
+      margin-bottom: 0.5em;
+    }
+
+    .options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .option {
+      background: #e2e6ea;
+      border: none;
+      border-radius: 0.5em;
+      padding: 0.5em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .option:hover {
+      background: #dee2e6;
+    }
+
+    .correct {
+      background: #a8e6a2 !important;
+    }
+
+    .wrong {
+      background: #f5a6a6 !important;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+
+    .no-data {
+      color: #777;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🧠 English Word Trainer</h1>
+
+  <!-- Меню -->
+  <div id="menu" class="card">
+    <h2>Выбери режим</h2>
+    <button class="btn-blue" id="start-btn">Обычный тест (25 слов)</button>
+    <button class="btn-green" id="mistake-test-btn">Тест по частым ошибкам</button>
+    <button class="btn-pink" id="session-test-btn">Тренировка текущих ошибок</button>
+    <button class="btn-gray" id="stats-btn">Посмотреть статистику</button>
+  </div>
+
+  <!-- Квиз -->
+  <div id="quiz" class="card hidden">
+    <div class="question" id="question">Вопрос</div>
+    <div class="progress" id="progress"></div>
+    <div class="options" id="options"></div>
+    <button class="btn-orange" id="dont-know-btn">Не знаю</button>
+    <button class="btn-blue" id="next-btn">Дальше</button>
+  </div>
+
+  <!-- Статистика -->
+  <div id="stats" class="card hidden">
+    <h2>Статистика ошибок</h2>
+    <div id="stats-content"></div>
+    <button class="btn-gray" id="back-btn">Назад</button>
+    <button class="btn-red" id="clear-btn">Очистить</button>
+  </div>
+
+  <script src="words.js"></script>
+  <script>
+    const menu = document.getElementById("menu");
+    const quiz = document.getElementById("quiz");
+    const stats = document.getElementById("stats");
+
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const nextBtn = document.getElementById("next-btn");
+    const dontKnowBtn = document.getElementById("dont-know-btn");
+    const progressEl = document.getElementById("progress");
+    const statsContent = document.getElementById("stats-content");
+
+    let selectedWords = [];
+    let currentIndex = 0;
+    let wrongWords = [];
+
+    const errorStatsKey = "wordErrorStats";
+
+    // ====== Память ошибок ======
+    function loadErrorStats() {
+      return JSON.parse(localStorage.getItem(errorStatsKey)) || {};
+    }
+
+    function saveErrorStats(stats) {
+      localStorage.setItem(errorStatsKey, JSON.stringify(stats));
+    }
+
+    function recordError(word) {
+      const stats = loadErrorStats();
+      stats[word.en] = (stats[word.en] || 0) + 1;
+      saveErrorStats(stats);
+    }
+
+    // ====== Управление экранами ======
+    function showScreen(screen) {
+      [menu, quiz, stats].forEach(el => el.classList.add("hidden"));
+      screen.classList.remove("hidden");
+    }
+
+    // ====== Квиз ======
+    function startQuiz(wordList) {
+      selectedWords = shuffleArray([...wordList]);
+      currentIndex = 0;
+      wrongWords = [];
+      showScreen(quiz);
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const currentWord = selectedWords[currentIndex];
+      questionEl.textContent = `Что значит слово: "${currentWord.en}"?`;
+      progressEl.textContent = `${currentIndex + 1} из ${selectedWords.length}`;
+
+      optionsEl.innerHTML = "";
+      let options = [currentWord.ru];
+      while (options.length < 4) {
+        const random = words[Math.floor(Math.random() * words.length)].ru;
+        if (!options.includes(random)) options.push(random);
+      }
+      options = shuffleArray(options);
+
+      options.forEach(answer => {
+        const btn = document.createElement("button");
+        btn.textContent = answer;
+        btn.className = "option";
+        btn.onclick = () => selectAnswer(btn, currentWord);
+        optionsEl.appendChild(btn);
+      });
+
+      nextBtn.style.display = "none";
+      dontKnowBtn.style.display = "inline-block";
+    }
+
+    function selectAnswer(button, word) {
+      const correct = word.ru;
+      document.querySelectorAll(".option").forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === correct) btn.classList.add("correct");
+      });
+      if (button.textContent !== correct) {
+        button.classList.add("wrong");
+        wrongWords.push(word);
+        recordError(word);
+      }
+      nextBtn.style.display = "inline-block";
+      dontKnowBtn.style.display = "none";
+    }
+
+    dontKnowBtn.onclick = () => {
+      const word = selectedWords[currentIndex];
+      wrongWords.push(word);
+      recordError(word);
+      document.querySelectorAll(".option").forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === word.ru) btn.classList.add("correct");
+      });
+      nextBtn.style.display = "inline-block";
+      dontKnowBtn.style.display = "none";
+    };
+
+    nextBtn.onclick = () => {
+      currentIndex++;
+      if (currentIndex < selectedWords.length) showQuestion();
+      else finishQuiz();
+    };
+
+    function finishQuiz() {
+      questionEl.textContent = "✅ Тест завершён!";
+      optionsEl.innerHTML = "";
+      progressEl.textContent = "";
+      nextBtn.style.display = "none";
+      dontKnowBtn.style.display = "none";
+
+      const btn = document.createElement("button");
+      btn.textContent = "В меню";
+      btn.className = "btn-gray";
+      btn.onclick = () => showScreen(menu);
+      optionsEl.appendChild(btn);
+    }
+
+    // ====== Статистика ======
+    function renderStats() {
+      const statsData = loadErrorStats();
+      const entries = Object.entries(statsData);
+      if (entries.length === 0) {
+        statsContent.innerHTML = "<p class='no-data'>Ошибок пока нет 🎉</p>";
+        return;
+      }
+
+      const sorted = entries.sort((a, b) => b[1] - a[1]);
+      statsContent.innerHTML = `
+        <table>
+          <tr><th>Слово</th><th>Перевод</th><th>Ошибок</th></tr>
+          ${sorted.map(([en, count]) => {
+        const w = words.find(x => x.en === en);
+        return `<tr><td>${en}</td><td>${w ? w.ru : "-"}</td><td>${count}</td></tr>`;
+      }).join("")}
+        </table>
+      `;
+    }
+
+    document.getElementById("start-btn").onclick = () => startQuiz(getRandomSubset(words, 25));
+    document.getElementById("mistake-test-btn").onclick = () => {
+      const stats = loadErrorStats();
+      const top = Object.entries(stats)
+        .sort((a, b) => b[1] - a[1])
+        .map(([en]) => words.find(w => w.en === en))
+        .filter(Boolean)
+        .slice(0, 25);
+      if (top.length === 0) return alert("Нет слов с ошибками 😊");
+      startQuiz(top);
+    };
+    document.getElementById("session-test-btn").onclick = () => {
+      if (wrongWords.length === 0) return alert("Пока нет ошибок в этой сессии 😎");
+      startQuiz(wrongWords);
+    };
+    document.getElementById("stats-btn").onclick = () => {
+      showScreen(stats);
+      renderStats();
+    };
+    document.getElementById("back-btn").onclick = () => showScreen(menu);
+    document.getElementById("clear-btn").onclick = () => {
+      if (confirm("Очистить всю статистику?")) {
+        localStorage.removeItem(errorStatsKey);
+        renderStats();
+      }
+    };
+
+    // ====== Helpers ======
+    function shuffleArray(arr) { return arr.sort(() => Math.random() - 0.5); }
+    function getRandomSubset(arr, n) {
+      const copy = [...arr];
+      return shuffleArray(copy).slice(0, n);
+    }
+  </script>
+</body>
+
+</html>
