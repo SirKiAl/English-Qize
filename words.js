@@ -1,4 +1,4 @@
-const newWords = [
+const words = [
   {en: "apologize", ru: "извиняться"},
   {en: "grown-up", ru: "взрослый"},
   {en: "even", ru: "даже"},
